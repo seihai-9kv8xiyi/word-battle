@@ -1,6 +1,5 @@
 import { NextResponse } from 'next/server';
 
-// 1. コサイン類似度（言葉の意味の近さ）を計算する関数
 function cosineSimilarity(vecA: number[], vecB: number[]) {
   let dotProduct = 0;
   let normA = 0;
@@ -13,7 +12,6 @@ function cosineSimilarity(vecA: number[], vecB: number[]) {
   return dotProduct / (Math.sqrt(normA) * Math.sqrt(normB));
 }
 
-// 2. 言語ベクトルを取得する関数（成功した最強のやつ）
 async function getGeminiEmbedding(text: string): Promise<number[]> {
   const apiKey = process.env.GEMINI_API_KEY;
   const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-embedding-001:embedContent?key=${apiKey}`;
@@ -36,7 +34,6 @@ async function getGeminiEmbedding(text: string): Promise<number[]> {
   return data.embedding.values; 
 }
 
-// 3. メインの攻撃処理
 export async function POST(request: Request) {
   try {
     const { word } = await request.json();
@@ -45,15 +42,13 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "言葉が入力されてへんで！" }, { status: 400 });
     }
 
-    // ① プレイヤーが入力した言葉をベクトル（数字の配列）に変換！
     const inputVector = await getGeminiEmbedding(word);
-
-    // ② 比較したい属性リストを用意（増やしてもオッケーやで！）
+    
+    // 属性リスト（増やしても面白いかもな！）
     const attributes = ["炎", "水", "草", "光", "闇"];
     let bestAttribute = "無";
     let maxSimilarity = -1;
 
-    // ③ 各属性と言葉の意味の近さ（コサイン類似度）を計算
     for (const attr of attributes) {
       const attrVector = await getGeminiEmbedding(attr);
       const similarity = cosineSimilarity(inputVector, attrVector);
@@ -64,16 +59,27 @@ export async function POST(request: Request) {
       }
     }
 
-    // ④ ダメージ計算！
-    // 類似度（0〜1）を100倍して、最低保証ダメージ（10）を足す感じで調整
-    const damage = Math.floor(Math.max(0, maxSimilarity) * 100) + 10;
+    // 💥【超重要】ダメージの補正計算💥
+    
+    // 1. 類似度は0.5〜0.9あたりに集中するので、0.5を基準（底）にして差を広げる
+    // 0.5以下は0、0.9なら0.8になるように引き伸ばす
+    const adjustedSimilarity = Math.max(0, maxSimilarity - 0.5) * 2; 
 
-    // ⑤ 画面側に結果を返す
+    // 2. 指数（2乗）を使って、値が高いほどダメージが爆発的に上がる「ロマン砲」仕様にする！
+    // 完全に意味が一致(1.0)なら250近いベースダメージが出る
+    const baseDamage = Math.floor(Math.pow(adjustedSimilarity, 2) * 250);
+
+    // 3. ゲームの醍醐味、乱数（運）要素を少し足す（0〜20のブレ）
+    const randomBonus = Math.floor(Math.random() * 21);
+
+    // 4. 最低ダメージ保証（10）を足して最終決定！
+    const damage = Math.max(10, baseDamage + randomBonus);
+
     return NextResponse.json({
       word: word,
       attribute: bestAttribute,
       damage: damage,
-      similarity: maxSimilarity
+      similarity: maxSimilarity // 確認用で生データも送っとくで
     });
 
   } catch (error: any) {
