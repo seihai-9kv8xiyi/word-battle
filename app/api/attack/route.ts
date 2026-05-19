@@ -100,7 +100,7 @@ export async function POST(request: Request) {
     // 複合属性の「ロマン」を出すために、倍率の上限を1.0ではなく「1.2（限界突破）」まで許す！
     rate = Math.max(0, Math.min(1.2, rate)); 
 
-    const MIN_DAMAGE = 45; 
+    const MIN_DAMAGE = 20; 
     const MAX_DAMAGE = 200; 
     
     // 限界突破（rateが1.0以上）した場合、最大200ダメージの壁を越えて240ダメージとかが出るようになる！
