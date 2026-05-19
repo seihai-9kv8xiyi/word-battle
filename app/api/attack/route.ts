@@ -70,8 +70,8 @@ export async function POST(request: Request) {
     results.sort((a, b) => b.similarity - a.similarity);
 
     // 💥【新・複合属性の合算ロジック】💥
-    const EXPECTED_MIN_SIM = 0.55; 
-    const EXPECTED_MAX_SIM = 0.85; 
+    const EXPECTED_MIN_SIM = 0.25; 
+    const EXPECTED_MAX_SIM = 0.65; 
 
     // 基準（0.55）を超えている「有効な属性」だけを抽出
     const validResults = results.filter(r => r.similarity > EXPECTED_MIN_SIM);
