@@ -44,7 +44,6 @@ export async function POST(request: Request) {
 
     const inputVector = await getGeminiEmbedding(word);
     
-    // 属性リスト（増やしても面白いかもな！）
     const attributes = ["炎", "水", "草", "光", "闇"];
     let bestAttribute = "無";
     let maxSimilarity = -1;
@@ -59,27 +58,32 @@ export async function POST(request: Request) {
       }
     }
 
-    // 💥【超重要】ダメージの補正計算💥
+    // 💥【新・ダメージ調整】数値指定マッピング方式💥
     
-    // 1. 類似度は0.5〜0.9あたりに集中するので、0.5を基準（底）にして差を広げる
-    // 0.5以下は0、0.9なら0.8になるように引き伸ばす
-    const adjustedSimilarity = Math.max(0, maxSimilarity - 0.5) * 2; 
+    // 1. 実際のAIの類似度が動く範囲をここに指定する（ここをいじると難易度変えられるで）
+    const EXPECTED_MIN_SIM = 0.55; // これより低い、または普通の言葉
+    const EXPECTED_MAX_SIM = 0.85; // ドンピシャで意味が近い言葉（0.85超えは神レベル）
 
-    // 2. 指数（2乗）を使って、値が高いほどダメージが爆発的に上がる「ロマン砲」仕様にする！
-    // 完全に意味が一致(1.0)なら250近いベースダメージが出る
-    const baseDamage = Math.floor(Math.pow(adjustedSimilarity, 2) * 250);
+    // 2. 類似度を 0.0 〜 1.0 の「倍率（rate）」に変換する
+    let rate = (maxSimilarity - EXPECTED_MIN_SIM) / (EXPECTED_MAX_SIM - EXPECTED_MIN_SIM);
+    rate = Math.max(0, Math.min(1, rate)); // 0未満や1以上にならないようにガード！
 
-    // 3. ゲームの醍醐味、乱数（運）要素を少し足す（0〜20のブレ）
-    const randomBonus = Math.floor(Math.random() * 21);
+    // 3. 出したいダメージの最低・最高をここでカチッと決める！
+    const MIN_DAMAGE = 45;  // 全然関係ない言葉でも、これくらいは食らわせたい最低火力
+    const MAX_DAMAGE = 200; // 属性ドンピシャの時に叩き出したいロマン最大火力
 
-    // 4. 最低ダメージ保証（10）を足して最終決定！
-    const damage = Math.max(10, baseDamage + randomBonus);
+    // 4. 倍率を掛け算してベースダメージを決定！
+    const baseDamage = Math.floor(MIN_DAMAGE + rate * (MAX_DAMAGE - MIN_DAMAGE));
+
+    // 5. 最後の味付けにちょっとだけ乱数（0〜15）を足す
+    const randomBonus = Math.floor(Math.random() * 16);
+    const damage = baseDamage + randomBonus;
 
     return NextResponse.json({
       word: word,
       attribute: bestAttribute,
       damage: damage,
-      similarity: maxSimilarity // 確認用で生データも送っとくで
+      similarity: maxSimilarity
     });
 
   } catch (error: any) {
