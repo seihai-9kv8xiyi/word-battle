@@ -1,5 +1,9 @@
 import { NextResponse } from 'next/server';
 
+// 💡【爆速化の裏技】属性のベクトルをサーバーに記憶（キャッシュ）させておく変数
+let cachedAttributeVectors: number[][] | null = null;
+let cachedAttributeNames: string[] = [];
+
 function cosineSimilarity(vecA: number[], vecB: number[]) {
   let dotProduct = 0;
   let normA = 0;
@@ -44,46 +48,71 @@ export async function POST(request: Request) {
 
     const inputVector = await getGeminiEmbedding(word);
     
-    const attributes = ["炎", "水", "草", "光", "闇"];
+    // 好きな属性をここに並べてな！（増やしてもAPI制限にかかりにくくしたで！）
+    const attributes = ["炎", "魔力", "雷", "聖", "闇", "無"];
+    
+    // キャッシュがない時だけ、全属性のベクトルを取得する
+    if (!cachedAttributeVectors || cachedAttributeNames.join() !== attributes.join()) {
+      // Promise.allで「同時」に通信するから一瞬で終わるで！
+      cachedAttributeVectors = await Promise.all(attributes.map(attr => getGeminiEmbedding(attr)));
+      cachedAttributeNames = [...attributes];
+    }
+
+    // 各属性との類似度を計算してリスト化
+    const results = attributes.map((attr, index) => {
+      return {
+        name: attr,
+        similarity: cosineSimilarity(inputVector, cachedAttributeVectors![index])
+      };
+    });
+
+    // 類似度が高い順に並び替え
+    results.sort((a, b) => b.similarity - a.similarity);
+
+    // 💥【新・複合属性の合算ロジック】💥
+    const EXPECTED_MIN_SIM = 0.55; 
+    const EXPECTED_MAX_SIM = 0.85; 
+
+    // 基準（0.55）を超えている「有効な属性」だけを抽出
+    const validResults = results.filter(r => r.similarity > EXPECTED_MIN_SIM);
+
+    let totalScore = 0;
     let bestAttribute = "無";
-    let maxSimilarity = -1;
 
-    for (const attr of attributes) {
-      const attrVector = await getGeminiEmbedding(attr);
-      const similarity = cosineSimilarity(inputVector, attrVector);
+    if (validResults.length > 0) {
+      // 【合算処理】基準を超えた分の「差分」を全部足し合わせる！
+      // 例：水が0.7(差0.15)、炎が0.7(差0.15) なら、合計0.3の特大ダメージになる！
+      for (const res of validResults) {
+        totalScore += (res.similarity - EXPECTED_MIN_SIM);
+      }
 
-      if (similarity > maxSimilarity) {
-        maxSimilarity = similarity;
-        bestAttribute = attr;
+      // 複合属性の名前付け（上位2つがどちらも「0.65」を超えていたら合体！）
+      if (validResults.length >= 2 && validResults[1].similarity > 0.65) {
+        bestAttribute = `${validResults[0].name}＋${validResults[1].name}`;
+      } else {
+        bestAttribute = validResults[0].name; // 通常の単一属性
       }
     }
 
-    // 💥【新・ダメージ調整】数値指定マッピング方式💥
+    // 倍率計算
+    let rate = totalScore / (EXPECTED_MAX_SIM - EXPECTED_MIN_SIM);
     
-    // 1. 実際のAIの類似度が動く範囲をここに指定する（ここをいじると難易度変えられるで）
-    const EXPECTED_MIN_SIM = 0.55; // これより低い、または普通の言葉
-    const EXPECTED_MAX_SIM = 0.85; // ドンピシャで意味が近い言葉（0.85超えは神レベル）
+    // 複合属性の「ロマン」を出すために、倍率の上限を1.0ではなく「1.2（限界突破）」まで許す！
+    rate = Math.max(0, Math.min(1.2, rate)); 
 
-    // 2. 類似度を 0.0 〜 1.0 の「倍率（rate）」に変換する
-    let rate = (maxSimilarity - EXPECTED_MIN_SIM) / (EXPECTED_MAX_SIM - EXPECTED_MIN_SIM);
-    rate = Math.max(0, Math.min(1, rate)); // 0未満や1以上にならないようにガード！
-
-    // 3. 出したいダメージの最低・最高をここでカチッと決める！
-    const MIN_DAMAGE = 45;  // 全然関係ない言葉でも、これくらいは食らわせたい最低火力
-    const MAX_DAMAGE = 200; // 属性ドンピシャの時に叩き出したいロマン最大火力
-
-    // 4. 倍率を掛け算してベースダメージを決定！
+    const MIN_DAMAGE = 45; 
+    const MAX_DAMAGE = 200; 
+    
+    // 限界突破（rateが1.0以上）した場合、最大200ダメージの壁を越えて240ダメージとかが出るようになる！
     const baseDamage = Math.floor(MIN_DAMAGE + rate * (MAX_DAMAGE - MIN_DAMAGE));
-
-    // 5. 最後の味付けにちょっとだけ乱数（0〜15）を足す
     const randomBonus = Math.floor(Math.random() * 16);
     const damage = baseDamage + randomBonus;
 
     return NextResponse.json({
       word: word,
-      attribute: bestAttribute,
+      attribute: bestAttribute, // 「水＋炎」などが返るようになる！
       damage: damage,
-      similarity: maxSimilarity
+      similarity: validResults.length > 0 ? validResults[0].similarity : 0 
     });
 
   } catch (error: any) {
