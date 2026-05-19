@@ -70,8 +70,9 @@ export async function POST(request: Request) {
     results.sort((a, b) => b.similarity - a.similarity);
 
     // 💥【新・複合属性の合算ロジック】💥
-    const EXPECTED_MIN_SIM = 0.25; 
-    const EXPECTED_MAX_SIM = 0.65; 
+    // 💥【新・複合属性の合算ロジック（ブレーキ付き）】💥
+    const EXPECTED_MIN_SIM = 0.55; 
+    const EXPECTED_MAX_SIM = 0.85; 
 
     // 基準（0.55）を超えている「有効な属性」だけを抽出
     const validResults = results.filter(r => r.similarity > EXPECTED_MIN_SIM);
@@ -80,10 +81,13 @@ export async function POST(request: Request) {
     let bestAttribute = "無";
 
     if (validResults.length > 0) {
-      // 【合算処理】基準を超えた分の「差分」を全部足し合わせる！
-      // 例：水が0.7(差0.15)、炎が0.7(差0.15) なら、合計0.3の特大ダメージになる！
-      for (const res of validResults) {
-        totalScore += (res.similarity - EXPECTED_MIN_SIM);
+      // 1. 【1位の属性】はそのまま100%スコアに加算！
+      totalScore += (validResults[0].similarity - EXPECTED_MIN_SIM);
+
+      // 2. 【2位以降の属性】は、そのまま足すとインフレするから「0.5倍」にして足す！
+      // これで「複合の恩恵」はありつつも、おかしな火力にはならんようになるで！
+      for (let i = 1; i < validResults.length; i++) {
+        totalScore += (validResults[i].similarity - EXPECTED_MIN_SIM) * 0.5;
       }
 
       // 複合属性の名前付け（上位2つがどちらも「0.65」を超えていたら合体！）
@@ -97,15 +101,16 @@ export async function POST(request: Request) {
     // 倍率計算
     let rate = totalScore / (EXPECTED_MAX_SIM - EXPECTED_MIN_SIM);
     
-    // 複合属性の「ロマン」を出すために、倍率の上限を1.0ではなく「1.2（限界突破）」まで許す！
-    rate = Math.max(0, Math.min(1.2, rate)); 
+    // 限界突破の上限も「1.2」から「1.1」にちょっとだけナーフ（下方修正）や！
+    rate = Math.max(0, Math.min(1.1, rate)); 
 
-    const MIN_DAMAGE = 20; 
-    const MAX_DAMAGE = 200; 
+    // 出したいダメージの基準値（ここもちょっとだけマイルドに調整したで）
+    const MIN_DAMAGE = 40;  // カスダメの底上げを少し下げた
+    const MAX_DAMAGE = 180; // 単一属性ドンピシャの最大火力を180に調整
     
-    // 限界突破（rateが1.0以上）した場合、最大200ダメージの壁を越えて240ダメージとかが出るようになる！
+    // 限界突破（rateが1.0以上）した時の最大火力は 180 + 20 = 200 前後になる計算や！
     const baseDamage = Math.floor(MIN_DAMAGE + rate * (MAX_DAMAGE - MIN_DAMAGE));
-    const randomBonus = Math.floor(Math.random() * 16);
+    const randomBonus = Math.floor(Math.random() * 11); // 乱数も0〜10にしてブレを抑えた
     const damage = baseDamage + randomBonus;
 
     return NextResponse.json({
