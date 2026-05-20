@@ -31,7 +31,7 @@ async function getGeminiEmbedding(text: string): Promise<number[]> {
 
   if (!response.ok) {
     const errData = await response.json();
-    throw new Error(errData.error?.message || "Gemini APIでエラーが発生したで");
+    throw new Error(errData.error?.message || "Gemini APIでエラーが発生しました");
   }
 
   const data = await response.json();
@@ -43,7 +43,7 @@ export async function POST(request: Request) {
     const { word } = await request.json();
 
     if (!word) {
-      return NextResponse.json({ error: "言葉が入力されてへんで！" }, { status: 400 });
+      return NextResponse.json({ error: "言葉が入力されていません！" }, { status: 400 });
     }
 
     const inputVector = await getGeminiEmbedding(word);
@@ -121,7 +121,7 @@ export async function POST(request: Request) {
     });
 
   } catch (error: any) {
-    console.error("エラーや！:", error);
-    return NextResponse.json({ error: error.message || "処理に失敗したわ" }, { status: 500 });
+    console.error("エラー！:", error);
+    return NextResponse.json({ error: error.message || "処理に失敗しました" }, { status: 500 });
   }
 }

@@ -23,7 +23,7 @@ export default function Home() {
 
   // --- ゲームの状態を管理するState ---
   const [p1Hp, setP1Hp] = useState(500);
-  const [p2Hp, setP2Hp] = useState(500);
+  const [p2Hp, setP2Hp] = useState(700);
   const [currentTurn, setCurrentTurn] = useState<1 | 2>(1);
   const [word, setWord] = useState("");
   const [loading, setLoading] = useState(false);
@@ -75,7 +75,7 @@ export default function Home() {
   // 2. 部屋を作る、または入る処理
   const handleJoinRoom = async (e: React.FormEvent, playerNum: 1 | 2) => {
     e.preventDefault();
-    if (!roomId.trim()) return alert("合言葉を入れてな！");
+    if (!roomId.trim()) return alert("合言葉を入れてください");
 
     setLoading(true);
     // まず部屋がすでに存在するかチェック
@@ -92,7 +92,7 @@ export default function Home() {
         winner: null,
       });
       if (error) {
-        alert("部屋の作成に失敗したわ...");
+        alert("部屋の作成に失敗しました...");
         setLoading(false);
         return;
       }
@@ -109,7 +109,7 @@ export default function Home() {
     if (!word || loading || winner || !myPlayerNumber) return;
 
     // 自分のターンじゃないなら、ボタンが押せても何もしない（不正防止）
-    if (currentTurn !== myPlayerNumber) return alert("まだお前のターンちゃうで！");
+    if (currentTurn !== myPlayerNumber) return alert("相手の行動中です");
 
     setLoading(true);
     try {
@@ -120,7 +120,7 @@ export default function Home() {
         body: JSON.stringify({ word }),
       });
 
-      if (!response.ok) throw new Error("通信エラーや");
+      if (!response.ok) throw new Error("通信エラー");
 
       const data = await response.json();
       const damage = data.damage;
@@ -161,7 +161,7 @@ export default function Home() {
 
       setWord(""); // 入力欄をクリア
     } catch (err) {
-      alert("エラーが起きたわ！リトライしてみてな");
+      alert("エラーが起きました。リトライしてください");
     } finally {
       setLoading(false);
     }
@@ -188,11 +188,11 @@ export default function Home() {
     return (
       <main className="max-w-md mx-auto p-6 mt-20 space-y-6 text-slate-200 bg-slate-900 border border-slate-800 rounded-2xl shadow-xl">
         <h1 className="text-2xl font-extrabold text-center bg-gradient-to-r from-cyan-400 to-purple-500 bg-clip-text text-transparent">
-          言霊オンライン対戦
+          言語闘争Field
         </h1>
         <div className="space-y-4">
           <div>
-            <label className="block text-sm font-medium text-slate-400 mb-1">部屋の合言葉（友達と同じ文字にしてな）</label>
+            <label className="block text-sm font-medium text-slate-400 mb-1">部屋の合言葉（相手と同じにしてください）</label>
             <input
               type="text"
               value={roomId}
@@ -227,7 +227,7 @@ export default function Home() {
     <main className="max-w-2xl mx-auto p-6 space-y-8 text-slate-200">
       <div className="flex justify-between items-center">
         <h1 className="text-3xl font-extrabold bg-gradient-to-r from-cyan-400 to-purple-500 bg-clip-text text-transparent">
-          言霊ベクトルバトル (Online)
+          言語闘争Field (Online)
         </h1>
         <span className="text-xs bg-slate-800 text-slate-400 px-3 py-1 rounded-full border border-slate-700">
           部屋: <strong className="text-slate-200">{roomId}</strong> / あなた: <strong className={myPlayerNumber === 1 ? "text-cyan-400" : "text-purple-400"}>P{myPlayerNumber}</strong>
@@ -265,16 +265,16 @@ export default function Home() {
       {winner ? (
         <div className="text-center p-6 bg-slate-800/80 rounded-2xl border border-yellow-500/30 shadow-2xl shadow-yellow-500/5 animate-bounce">
           <h2 className="text-2xl font-black text-yellow-400">👑 決着！！ 👑</h2>
-          <p className="mt-2 text-xl font-bold text-slate-100">{winner} の完全勝利や！</p>
+          <p className="mt-2 text-xl font-bold text-slate-100">{winner} の完全勝利！</p>
           <button onClick={handleReset} className="mt-4 px-6 py-2 bg-yellow-500 text-slate-950 font-bold rounded-lg hover:bg-yellow-400 transition-colors">もう一回遊ぶ</button>
         </div>
       ) : (
         <form onSubmit={handleAttack} className="space-y-3">
           <label className="block text-sm font-medium text-slate-300">
             {currentTurn === myPlayerNumber ? (
-              <span className="text-green-400 font-bold">あなたの番や！言霊を放て！</span>
+              <span className="text-green-400 font-bold">あなたの番です。攻撃を放て！</span>
             ) : (
-              <span className="text-slate-400">相手が考えてるで。ちょっと待ちや...</span>
+              <span className="text-slate-400">相手が行動中です</span>
             )}
           </label>
           <div className="flex gap-2">
@@ -283,7 +283,7 @@ export default function Home() {
               value={word}
               onChange={(e) => setWord(e.target.value)}
               disabled={loading || currentTurn !== myPlayerNumber}
-              placeholder={currentTurn === myPlayerNumber ? "最強の言霊を入力..." : "相手のターンやで"}
+              placeholder={currentTurn === myPlayerNumber ? "攻撃名を入力" : "相手のターン中です"}
               className="flex-1 px-4 py-3 bg-slate-900 border border-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 text-slate-100 placeholder-slate-500 disabled:opacity-50"
             />
             <button
@@ -291,7 +291,7 @@ export default function Home() {
               disabled={loading || !word || currentTurn !== myPlayerNumber}
               className="px-6 py-3 bg-indigo-600 hover:bg-indigo-500 disabled:bg-slate-800 text-white font-bold rounded-xl shadow-lg transition-all disabled:opacity-50"
             >
-              {loading ? "計算中..." : "言霊を放つ！"}
+              {loading ? "計算中..." : "攻撃！"}
             </button>
           </div>
         </form>
@@ -299,10 +299,10 @@ export default function Home() {
 
       {/* バトルログ */}
       <div className="space-y-3">
-        <h3 className="text-lg font-bold text-slate-400">リアルタイム戦闘履歴</h3>
+        <h3 className="text-lg font-bold text-slate-400">戦闘履歴</h3>
         <div className="bg-slate-900/50 border border-slate-800 rounded-xl p-4 h-48 overflow-y-auto space-y-2 font-mono text-sm">
           {logs.length === 0 ? (
-            <div className="text-slate-600 text-center pt-16">ここに激闘の記録が刻まれるで...</div>
+            <div className="text-slate-600 text-center pt-16">ここに戦闘の記録が刻まれます</div>
           ) : (
             logs.map((log, index) => (
               <div key={index} className="p-2 rounded bg-slate-800/40 border-l-4 border-indigo-500 flex justify-between animate-fadeIn">
