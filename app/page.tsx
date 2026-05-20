@@ -173,7 +173,7 @@ export default function Home() {
       .from("rooms")
       .update({
         p1_hp: 500,
-        p2_hp: 500,
+        p2_hp: 700,
         current_turn: 1,
         logs: [],
         winner: null,
