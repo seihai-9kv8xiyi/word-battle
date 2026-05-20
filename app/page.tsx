@@ -86,7 +86,7 @@ export default function Home() {
       const { error } = await supabase.from("rooms").insert({
         id: roomId,
         p1_hp: 500,
-        p2_hp: 700,
+        p2_hp: 600,
         current_turn: 1,
         logs: [],
         winner: null,
@@ -173,7 +173,7 @@ export default function Home() {
       .from("rooms")
       .update({
         p1_hp: 500,
-        p2_hp: 700,
+        p2_hp: 600,
         current_turn: 1,
         logs: [],
         winner: null,
@@ -255,7 +255,7 @@ export default function Home() {
             {currentTurn === 2 && !winner && <span className="text-xs bg-purple-500 text-slate-950 px-2 py-0.5 rounded-full font-black animate-pulse">TURN</span>}
           </div>
           <div className="w-full bg-slate-800 h-4 rounded-full mt-2 overflow-hidden border border-slate-700">
-            <div className="bg-purple-500 h-full transition-all duration-300" style={{ width: `${(p2Hp / 500) * 100}%` }}></div>
+            <div className="bg-purple-500 h-full transition-all duration-300" style={{ width: `${(p2Hp / 600) * 100}%` }}></div>
           </div>
           <div className="text-right text-sm font-mono mt-1 text-slate-400">HP: <span className="text-purple-400 font-bold">{p2Hp}</span> / 500</div>
         </div>
