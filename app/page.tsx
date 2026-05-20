@@ -86,7 +86,7 @@ export default function Home() {
       const { error } = await supabase.from("rooms").insert({
         id: roomId,
         p1_hp: 500,
-        p2_hp: 500,
+        p2_hp: 700,
         current_turn: 1,
         logs: [],
         winner: null,
